@@ -25,6 +25,16 @@ The usage is simple after installation: just input the course and section ID you
 <img width="50%" style="float: right;" alt="notify-message" src="https://www.seas.upenn.edu/~hanbangw/assets/images/pennmate/notify-message.jpg"/>
 </div>
 
+## Compare
+
+<img width="50%" alt="notify-compare" src="https://www.seas.upenn.edu/~hanbangw/assets/images/pennmate/notify-compare.jpg"/>
+
+I dropped one of my courses to compare three current notify applicaions. I signed up for these three and dropped my course at about 1:07.
+
+- Pennmate Notify notifies me via push notificastion about \~1.5min later.
+- PennCourseNotify notifies me via email about 13min later.
+- PennCourseAlert, unfortunately, did not send an email to me within 15 minutes, so I added my course back.
+
 ## Installation
 
 This app is written in [Dart](https://www.dartlang.org/) and uses the [Flutter](https://flutter.dev/) framework. It is natively a cross-platform app, meaning that it can run on both iOS and Android devices.
