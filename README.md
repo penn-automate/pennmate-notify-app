@@ -41,7 +41,7 @@ This app is written in [Dart](https://www.dartlang.org/) and uses the [Flutter](
 
 Unfortunately, it is not possible to install an app from an unknown source on unjailbreaked iOS devices. The only way for me is to obtain a developer account from Apple, which would cost me $99/yr. <small>im cute plz give me money</small>
 
-Although it would also cost money to publish the app in Google Play, users can install a third-party apk without any extra modification. Just make sure you **DON'T click on OK when the prompt pops up**, which asks you to NOT install from an unknown developer. If you did so, you'll have to turn off the protection in Google Play settings.
+But Google Play only costs $25 for lifetime, which means I get to publish the app on it! Here's the Google Play store: [Pennmate Notify](https://play.google.com/store/apps/details?id=edu.hanbangw.pennmate_notify).
 
 ***APK download (ver. 0.1) for ARM:*** [pennmate-notify-0.1.apk](https://github.com/penn-automate/pennmate-notify-app/releases/download/v0.1/pennmate-notify-0.1.apk)  
 <small>\*Make sure your device's CPU set is ARM or ARM64. If you need x86 version plz comment below.</small>
