@@ -48,7 +48,7 @@ class MainPage extends StatefulWidget {
 class _MainPageState extends State<MainPage> {
   final _messaging = FirebaseMessaging();
   final _regExp = new RegExp(
-      r'^([A-Z]{2,4})\s*-?(?!000?)(\d{2,3})-?(?!000)(\d{3})$',
+      r'^([A-Z]{2,4})\s*-?((?!000)\d{3}|(?!00)\d{2})-?(?!000)(\d{3})$',
       caseSensitive: false);
   final _pref = SharedPreferences.getInstance();
   List<String> _children = <String>[];
@@ -56,6 +56,10 @@ class _MainPageState extends State<MainPage> {
   @override
   void initState() {
     super.initState();
+    _messaging.configure(onMessage: (m) {
+      print(m);
+      _showNormalAlert(m['notification']['title'], m['notification']['body']);
+    });
     _pref.then((pref) {
       final clist = _getList(pref);
       _updateList(clist);
@@ -112,19 +116,18 @@ class _MainPageState extends State<MainPage> {
         context: context,
         builder: (context) => AlertDialog(
               title: const Text("Add Course"),
-              contentPadding: const EdgeInsets.all(16.0),
               content: Form(
                   key: key,
                   child: TextFormField(
                     autofocus: true,
                     textCapitalization: TextCapitalization.characters,
                     decoration: const InputDecoration(
-                      labelText: 'Course ID',
+                      labelText: 'Course & Section ID',
                       hintText: 'e.g. NETS-212-001',
                     ),
                     validator: (s) {
                       match = _regExp.firstMatch(s);
-                      return match == null ? 'invalid course ID' : null;
+                      return match == null ? 'Invalid ID' : null;
                     },
                     onEditingComplete: () {
                       if (key.currentState.validate()) {
@@ -136,9 +139,7 @@ class _MainPageState extends State<MainPage> {
               actions: <Widget>[
                 FlatButton(
                     child: const Text('Cancel'),
-                    onPressed: () {
-                      Navigator.pop(context);
-                    }),
+                    onPressed: () => Navigator.pop(context)),
                 RaisedButton(
                   child: const Text('Confirm'),
                   onPressed: () {
@@ -158,19 +159,16 @@ class _MainPageState extends State<MainPage> {
         context: context,
         builder: (context) => AlertDialog(
               title: const Text("Confirm Deletion"),
-              contentPadding: const EdgeInsets.all(16.0),
               content: Row(
                 children: <Widget>[
                   Expanded(
-                      child: Text('Do you really want to delete course\n $s ?'))
+                      child: Text('Do you really want to delete course\n$s?'))
                 ],
               ),
               actions: <Widget>[
                 FlatButton(
                     child: const Text('No'),
-                    onPressed: () {
-                      Navigator.pop(context);
-                    }),
+                    onPressed: () => Navigator.pop(context)),
                 RaisedButton(
                   child: const Text('Yes'),
                   onPressed: () {
@@ -179,6 +177,22 @@ class _MainPageState extends State<MainPage> {
                   },
                   textColor: Colors.white,
                 )
+              ],
+            ));
+  }
+
+  _showNormalAlert(title, body) async {
+    await showDialog(
+        context: context,
+        builder: (BuildContext context) => AlertDialog(
+              title: Text(title),
+              content: Row(
+                children: <Widget>[Expanded(child: Text(body))],
+              ),
+              actions: <Widget>[
+                FlatButton(
+                    child: const Text('OK'),
+                    onPressed: () => Navigator.pop(context)),
               ],
             ));
   }
@@ -206,24 +220,40 @@ class _MainPageState extends State<MainPage> {
               if (_children.isEmpty) {
                 return const <Widget>[
                   Text(
-                    'No courses added for now...',
+                    'No course added for now...',
                     style: TextStyle(fontSize: 20.0),
                   )
                 ];
               }
               return _children
                   .map((s) => Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: <Widget>[
-                          Text(
-                            s,
-                            style: const TextStyle(fontSize: 30.0),
-                          ),
-                          IconButton(
-                              icon: const Icon(Icons.delete),
-                              onPressed: () => _showDeleteAlert(s))
+                          Text(s.replaceAll(" ", ""),
+                              style: const TextStyle(fontSize: 30.0)),
+                          Ink(
+                            width: 40,
+                            height: 40,
+                            decoration: ShapeDecoration(
+                              color: Colors.lightBlue,
+                              shape: CircleBorder(),
+                            ),
+                            child: IconButton(
+                              iconSize: 25,
+                              icon: const Icon(Icons.delete_outline),
+                              onPressed: () => _showDeleteAlert(s),
+                              color: Colors.white,
+                            ),
+                          )
                         ],
                       ))
-                  .toList();
+                  .fold(<Widget>[
+                const Text('Course List', style: TextStyle(fontSize: 40.0))
+              ], (List<Widget> l, row) {
+                l.add(const Divider());
+                l.add(row);
+                return l;
+              });
             }(),
           )),
       floatingActionButton: FloatingActionButton(
