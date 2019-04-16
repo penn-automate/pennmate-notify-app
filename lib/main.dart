@@ -1,6 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_typeahead/flutter_typeahead.dart';
 
 void main() => runApp(MyApp());
 
@@ -10,36 +13,14 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Pennmate Notify',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
-        primarySwatch: Colors.blue,
-      ),
-      home: MainPage(title: 'Pennmate Notify'),
+      theme: ThemeData(primarySwatch: Colors.blue),
+      home: MainPage(),
     );
   }
 }
 
 class MainPage extends StatefulWidget {
-  MainPage({Key key, this.title}) : super(key: key);
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+  MainPage({Key key}) : super(key: key);
 
   @override
   _MainPageState createState() => _MainPageState();
@@ -51,19 +32,22 @@ class _MainPageState extends State<MainPage> {
       r'^([A-Z]{2,4})\s*-?((?!000)\d{3}|(?!00)\d{2})-?(?!000)(\d{3})$',
       caseSensitive: false);
   final _pref = SharedPreferences.getInstance();
+  final _courses = <Map<String, dynamic>>[];
   List<String> _children = <String>[];
 
   @override
   void initState() {
     super.initState();
     _messaging.configure(onMessage: (m) {
-      print(m);
       _showNormalAlert(m['notification']['title'], m['notification']['body']);
     });
     _pref.then((pref) {
       final clist = _getList(pref);
       _updateList(clist);
       clist.map(_sanitizeToTopic).forEach(_addTopic);
+    });
+    http.get('https://penncoursealert.com/courses').then((resp) {
+      jsonDecode(resp.body).forEach((c) => _courses.add(c));
     });
   }
 
@@ -111,6 +95,7 @@ class _MainPageState extends State<MainPage> {
 
   _showDialog() async {
     final key = GlobalKey<FormState>();
+    final controller = TextEditingController();
     Match match;
     await showDialog(
         context: context,
@@ -118,22 +103,51 @@ class _MainPageState extends State<MainPage> {
               title: const Text("Add Course"),
               content: Form(
                   key: key,
-                  child: TextFormField(
-                    autofocus: true,
-                    textCapitalization: TextCapitalization.characters,
-                    decoration: const InputDecoration(
-                      labelText: 'Course & Section ID',
-                      hintText: 'e.g. NETS-212-001',
+                  child: TypeAheadFormField(
+                    hideOnEmpty: true,
+                    animationDuration: const Duration(),
+                    hideSuggestionsOnKeyboardHide: false,
+                    textFieldConfiguration: TextFieldConfiguration(
+                      controller: controller,
+                      textCapitalization: TextCapitalization.characters,
+                      autocorrect: false,
+                      autofocus: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Course & Section ID',
+                        hintText: 'e.g. NETS-212-001',
+                      ),
+                      onEditingComplete: () {
+                        if (key.currentState.validate()) {
+                          _addChannel(match);
+                          Navigator.pop(context);
+                        }
+                      },
                     ),
                     validator: (s) {
                       match = _regExp.firstMatch(s);
                       return match == null ? 'Invalid ID' : null;
                     },
-                    onEditingComplete: () {
-                      if (key.currentState.validate()) {
-                        _addChannel(match);
-                        Navigator.pop(context);
-                      }
+                    suggestionsCallback: (pattern) {
+                      pattern =
+                          pattern.replaceAll(RegExp(r'-|\s'), '').toUpperCase();
+                      return pattern.isEmpty
+                          ? const <void>[]
+                          : _courses
+                              .where((c) => c['section_id']
+                                  .toString()
+                                  .replaceAll(RegExp(r'-|\s'), '')
+                                  .startsWith(pattern))
+                              .take(6)
+                              .toList();
+                    },
+                    itemBuilder: (context, suggestion) => ListTile(
+                          leading: Text(
+                              suggestion['section_id'].replaceAll('-', '\n')),
+                          title: Text(suggestion['course_title']),
+                          subtitle: Text(suggestion['instructors'].join(', ')),
+                        ),
+                    onSuggestionSelected: (suggestion) {
+                      controller.text = suggestion['section_id'];
                     },
                   )),
               actions: <Widget>[
@@ -199,21 +213,11 @@ class _MainPageState extends State<MainPage> {
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
       appBar: AppBar(
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+        title: const Text('Pennmate Notify'),
       ),
       body: Container(
-          // Center is a layout widget. It takes a single child and positions it
-          // in the middle of the parent.
           padding: EdgeInsets.all(16.0),
           child: Column(
             children: () {
@@ -260,7 +264,7 @@ class _MainPageState extends State<MainPage> {
         onPressed: _showDialog,
         tooltip: 'Add',
         child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+      ),
     );
   }
 }
