@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:async';
+import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -26,20 +28,28 @@ class MainPage extends StatefulWidget {
   _MainPageState createState() => _MainPageState();
 }
 
-class _MainPageState extends State<MainPage> {
+class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
   final _messaging = FirebaseMessaging();
   final _regExp = new RegExp(
       r'^([A-Z]{2,4})\s*-?((?!000)\d{3}|(?!00)\d{2})-?(?!000)(\d{3})$',
       caseSensitive: false);
   final _pref = SharedPreferences.getInstance();
   final _courses = <Map<String, dynamic>>[];
+  Timer _timer;
   List<String> _children = <String>[];
+
+  void timerAction() {
+    _timer = Timer(const Duration(minutes: 1), timerAction);
+    setState(() {});
+  }
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _messaging.configure(onMessage: (m) {
       _showNormalAlert(m['notification']['title'], m['notification']['body']);
+      setState(() {});
     });
     _pref.then((pref) {
       final clist = _getList(pref);
@@ -49,6 +59,13 @@ class _MainPageState extends State<MainPage> {
     http.get('https://penncoursealert.com/courses').then((resp) {
       jsonDecode(resp.body).forEach((c) => _courses.add(c));
     });
+    _timer = Timer(const Duration(minutes: 1), timerAction);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   void _updateList(List<String> list) => setState(() {
@@ -211,6 +228,22 @@ class _MainPageState extends State<MainPage> {
             ));
   }
 
+  final _formatter = new DateFormat('MMM d, h:mm a');
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.paused:
+        _timer.cancel();
+        break;
+      case AppLifecycleState.resumed:
+        timerAction();
+        _timer = Timer(const Duration(minutes: 1), timerAction);
+        break;
+      default:
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -231,22 +264,63 @@ class _MainPageState extends State<MainPage> {
               }
               return _children
                   .map((s) => Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: <Widget>[
-                          Text(s.replaceAll(" ", ""),
-                              style: const TextStyle(fontSize: 30.0)),
-                          Ink(
-                            width: 40,
-                            height: 40,
-                            decoration: ShapeDecoration(
-                              color: Colors.lightBlue,
-                              shape: CircleBorder(),
-                            ),
-                            child: IconButton(
-                              iconSize: 25,
-                              icon: const Icon(Icons.delete_outline),
-                              onPressed: () => _showDeleteAlert(s),
-                              color: Colors.white,
+                          Expanded(
+                              flex: 4,
+                              child: Text(s.replaceAll(' ', ''),
+                                  style: const TextStyle(fontSize: 25.0))),
+                          Expanded(
+                            flex: 3,
+                            child: FutureBuilder<http.Response>(
+                                future: http.get(
+                                    'https://pennmate.com/last_opened.php?course=' +
+                                        s),
+                                builder: (BuildContext context,
+                                    AsyncSnapshot<http.Response> snapshot) {
+                                  switch (snapshot.connectionState) {
+                                    case ConnectionState.done:
+                                      if (snapshot.hasError ||
+                                          snapshot.data.body.isEmpty) break;
+                                      final intData =
+                                          int.tryParse(snapshot.data.body);
+                                      if (intData == null) break;
+                                      final wid = <Widget>[
+                                        Text(
+                                          intData == -1
+                                              ? 'Course now opens.'
+                                              : 'Last opened:',
+                                          style: TextStyle(color: Colors.cyan),
+                                        )
+                                      ];
+
+                                      if (intData != -1) {
+                                        wid.add(Text(
+                                          _formatter.format(DateTime
+                                              .fromMillisecondsSinceEpoch(
+                                                  intData * 1000)),
+                                          style: TextStyle(color: Colors.cyan),
+                                        ));
+                                      }
+                                      return Column(children: wid);
+                                    default:
+                                  }
+                                  return Container();
+                                }),
+                          ),
+                          Expanded(
+                            child: Ink(
+                              width: 40,
+                              height: 40,
+                              decoration: ShapeDecoration(
+                                color: Colors.lightBlue,
+                                shape: CircleBorder(),
+                              ),
+                              child: IconButton(
+                                iconSize: 25,
+                                icon: const Icon(Icons.delete_outline),
+                                onPressed: () => _showDeleteAlert(s),
+                                color: Colors.white,
+                              ),
                             ),
                           )
                         ],
