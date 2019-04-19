@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
+import 'package:auto_size_text/auto_size_text.dart';
 
 void main() => runApp(MyApp());
 
@@ -193,7 +194,10 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
               content: Row(
                 children: <Widget>[
                   Expanded(
-                      child: Text('Do you really want to delete course\n$s?'))
+                    child: Text('Do you really want to delete course ' +
+                        s.replaceAll(' ', '') +
+                        '?'),
+                  )
                 ],
               ),
               actions: <Widget>[
@@ -267,7 +271,8 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
                         children: <Widget>[
                           Expanded(
                               flex: 4,
-                              child: Text(s.replaceAll(' ', ''),
+                              child: AutoSizeText(s.replaceAll(' ', ''),
+                                  maxLines: 1,
                                   style: const TextStyle(fontSize: 25.0))),
                           Expanded(
                             flex: 3,
@@ -285,19 +290,21 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
                                           int.tryParse(snapshot.data.body);
                                       if (intData == null) break;
                                       final wid = <Widget>[
-                                        Text(
+                                        AutoSizeText(
                                           intData == -1
                                               ? 'Course now opens.'
                                               : 'Last opened:',
+                                          maxLines: 1,
                                           style: TextStyle(color: Colors.cyan),
                                         )
                                       ];
 
                                       if (intData != -1) {
-                                        wid.add(Text(
+                                        wid.add(AutoSizeText(
                                           _formatter.format(DateTime
                                               .fromMillisecondsSinceEpoch(
                                                   intData * 1000)),
+                                          maxLines: 1,
                                           style: TextStyle(color: Colors.cyan),
                                         ));
                                       }
