@@ -11,7 +11,6 @@ import 'package:auto_size_text/auto_size_text.dart';
 void main() => runApp(MyApp());
 
 class MyApp extends StatelessWidget {
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -37,10 +36,11 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
   final _pref = SharedPreferences.getInstance();
   final _courses = <Map<String, dynamic>>[];
   Timer _timer;
-  List<String> _children = <String>[];
+  List<String> _children = [];
 
-  void timerAction() {
-    _timer = Timer(const Duration(minutes: 1), timerAction);
+  void _timerAction() {
+    _timer?.cancel();
+    _timer = Timer(const Duration(minutes: 1), _timerAction);
     setState(() {});
   }
 
@@ -50,17 +50,18 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _messaging.configure(onMessage: (m) {
       _showNormalAlert(m['notification']['title'], m['notification']['body']);
-      setState(() {});
+      _timerAction();
+      return;
     });
     _pref.then((pref) {
       final clist = _getList(pref);
       _updateList(clist);
       clist.map(_sanitizeToTopic).forEach(_addTopic);
     });
-    http.get('https://penncoursealert.com/courses').then((resp) {
+    http.get('https://pennmate.com/courses.php').then((resp) {
       jsonDecode(resp.body).forEach((c) => _courses.add(c));
     });
-    _timer = Timer(const Duration(minutes: 1), timerAction);
+    _timer = Timer(const Duration(minutes: 1), _timerAction);
   }
 
   @override
@@ -69,9 +70,10 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
     super.dispose();
   }
 
-  void _updateList(List<String> list) => setState(() {
-        _children = list;
-      });
+  void _updateList(List<String> list) {
+    _children = list;
+    _timerAction();
+  }
 
   List<String> _getList(pref) {
     if (!pref.containsKey("clist")) {
@@ -104,8 +106,7 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
 
   void _deleteChannel(String ch) async {
     final pref = await _pref;
-    final clist = _getList(pref);
-    clist.remove(ch);
+    final clist = _getList(pref)..remove(ch);
     pref.setStringList("clist", clist);
     _updateList(clist);
     _deleteTopic(_sanitizeToTopic(ch));
@@ -122,6 +123,7 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
               content: Form(
                   key: key,
                   child: TypeAheadFormField(
+                    getImmediateSuggestions: true,
                     hideOnEmpty: true,
                     animationDuration: const Duration(),
                     hideSuggestionsOnKeyboardHide: false,
@@ -151,24 +153,33 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
                       return pattern.isEmpty
                           ? const <void>[]
                           : _courses
-                              .where((c) => c['section_id']
-                                  .toString()
-                                  .replaceAll(RegExp(r'-|\s'), '')
-                                  .startsWith(pattern))
+                              .where((c) => c['id'].startsWith(pattern))
                               .take(6)
                               .toList();
                     },
                     itemBuilder: (context, suggestion) => ListTile(
-                          leading: Text(
-                              suggestion['section_id'].replaceAll('-', '\n')),
-                          title: Text(suggestion['course_title']),
-                          subtitle: Text(suggestion['instructors'].join(', ')),
-                        ),
+                      leading: Text(suggestion['id'].splitMapJoin(_regExp,
+                          onMatch: (Match m) =>
+                              m.groups([1, 2, 3]).join('\n'))),
+                      title: Text(suggestion['title']),
+                      subtitle: AutoSizeText(
+                        suggestion['inst'].join(', '),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      trailing: Text(suggestion['act']),
+                      dense: true,
+                      selected: controller.text
+                              .replaceAll(RegExp(r'-|\s'), '')
+                              .toUpperCase() ==
+                          suggestion['id'],
+                    ),
                     onSuggestionSelected: (suggestion) {
-                      controller.text = suggestion['section_id'];
+                      controller.text = suggestion['id'].splitMapJoin(_regExp,
+                          onMatch: (Match m) => m.groups([1, 2, 3]).join('-'));
                     },
                   )),
-              actions: <Widget>[
+              actions: [
                 FlatButton(
                     child: const Text('Cancel'),
                     onPressed: () => Navigator.pop(context)),
@@ -192,7 +203,7 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
         builder: (context) => AlertDialog(
               title: const Text("Confirm Deletion"),
               content: Row(
-                children: <Widget>[
+                children: [
                   Expanded(
                     child: Text('Do you really want to delete course ' +
                         s.replaceAll(' ', '') +
@@ -200,7 +211,7 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
                   )
                 ],
               ),
-              actions: <Widget>[
+              actions: [
                 FlatButton(
                     child: const Text('No'),
                     onPressed: () => Navigator.pop(context)),
@@ -222,9 +233,9 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
         builder: (BuildContext context) => AlertDialog(
               title: Text(title),
               content: Row(
-                children: <Widget>[Expanded(child: Text(body))],
+                children: [Expanded(child: Text(body))],
               ),
-              actions: <Widget>[
+              actions: [
                 FlatButton(
                     child: const Text('OK'),
                     onPressed: () => Navigator.pop(context)),
@@ -241,8 +252,9 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
         _timer.cancel();
         break;
       case AppLifecycleState.resumed:
-        timerAction();
-        _timer = Timer(const Duration(minutes: 1), timerAction);
+        if (!_timer.isActive) {
+          _timerAction();
+        }
         break;
       default:
     }
@@ -259,7 +271,7 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
           child: Column(
             children: () {
               if (_children.isEmpty) {
-                return const <Widget>[
+                return const [
                   Text(
                     'No course added for now...',
                     style: TextStyle(fontSize: 20.0),
@@ -268,7 +280,7 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
               }
               return _children
                   .map((s) => Row(
-                        children: <Widget>[
+                        children: [
                           Expanded(
                               flex: 4,
                               child: AutoSizeText(s.replaceAll(' ', ''),
@@ -289,7 +301,7 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
                                       final intData =
                                           int.tryParse(snapshot.data.body);
                                       if (intData == null) break;
-                                      final wid = <Widget>[
+                                      final wid = [
                                         AutoSizeText(
                                           intData == -1
                                               ? 'Course now opens.'
@@ -334,10 +346,8 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
                       ))
                   .fold(<Widget>[
                 const Text('Course List', style: TextStyle(fontSize: 40.0))
-              ], (List<Widget> l, row) {
-                l.add(const Divider());
-                l.add(row);
-                return l;
+              ], (l, row) {
+                return l..add(const Divider())..add(row);
               });
             }(),
           )),

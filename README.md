@@ -17,24 +17,6 @@ The backend that gets the status of the courses is the same with PCN or PCA. The
 
 The usage is simple after installation: just input the course and section ID you want to be in, wait and receive a push notification as soon as the section is open.
 
-## Screenshots
-
-<div style="display: block;">
-<img width="50%" alt="notify-home" src="https://www.seas.upenn.edu/~hanbangw/assets/images/pennmate/notify-home.jpg"/>
-
-<img width="50%" style="float: right;" alt="notify-message" src="https://www.seas.upenn.edu/~hanbangw/assets/images/pennmate/notify-message.jpg"/>
-</div>
-
-## Compare
-
-<img width="50%" alt="notify-compare" src="https://www.seas.upenn.edu/~hanbangw/assets/images/pennmate/notify-compare.jpg"/>
-
-I dropped one of my courses to compare three current notify applicaions. I signed up for these three and dropped my course at about 1:07.
-
-- Pennmate Notify notifies me via push notificastion about \~1.5min later.
-- PennCourseNotify notifies me via email about 13min later.
-- PennCourseAlert, unfortunately, did not send an email to me within 15 minutes, so I added my course back.
-
 ## Installation
 
 This app is written in [Dart](https://www.dartlang.org/) and uses the [Flutter](https://flutter.dev/) framework. It is natively a cross-platform app, meaning that it can run on both iOS and Android devices.
@@ -42,12 +24,3 @@ This app is written in [Dart](https://www.dartlang.org/) and uses the [Flutter](
 Unfortunately, it is not possible to install an app from an unknown source on unjailbreaked iOS devices. The only way for me is to obtain a developer account from Apple, which would cost me $99/yr. <small>im cute plz give me money</small>
 
 But Google Play only costs $25 for lifetime, which means I get to publish the app on it! Here's the Google Play store: [Pennmate Notify](https://play.google.com/store/apps/details?id=edu.hanbangw.pennmate_notify).
-
-***APK download (ver. 0.1) for ARM:*** [pennmate-notify-0.1.apk](https://github.com/penn-automate/pennmate-notify-app/releases/download/v0.1/pennmate-notify-0.1.apk)  
-<small>\*Make sure your device's CPU set is ARM or ARM64. If you need x86 version plz comment below.</small>
-
-## Changelog
-
-- v0.1: Initial public release. Fixes adding duplicate course.
-- v0.1b: Initial beta release. Add custome logo and versioning. 
-- v0.1a: Initial alpha release.
