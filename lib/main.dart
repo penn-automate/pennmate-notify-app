@@ -15,7 +15,10 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Pennmate Notify',
-      theme: ThemeData(primarySwatch: Colors.blue),
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        buttonColor: Colors.blue,
+      ),
       home: MainPage(),
     );
   }
@@ -125,7 +128,6 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
                   child: TypeAheadFormField(
                     getImmediateSuggestions: true,
                     hideOnEmpty: true,
-                    animationDuration: const Duration(),
                     hideSuggestionsOnKeyboardHide: false,
                     textFieldConfiguration: TextFieldConfiguration(
                       controller: controller,
@@ -266,91 +268,94 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
       appBar: AppBar(
         title: const Text('Pennmate Notify'),
       ),
-      body: Container(
-          padding: EdgeInsets.all(16.0),
-          child: Column(
-            children: () {
-              if (_children.isEmpty) {
-                return const [
-                  Text(
-                    'No course added for now...',
-                    style: TextStyle(fontSize: 20.0),
-                  )
-                ];
-              }
-              return _children
-                  .map((s) => Row(
-                        children: [
-                          Expanded(
-                              flex: 4,
-                              child: AutoSizeText(s.replaceAll(' ', ''),
-                                  maxLines: 1,
-                                  style: const TextStyle(fontSize: 25.0))),
-                          Expanded(
-                            flex: 3,
-                            child: FutureBuilder<http.Response>(
-                                future: http.get(
-                                    'https://pennmate.com/last_opened.php?course=' +
-                                        s),
-                                builder: (BuildContext context,
-                                    AsyncSnapshot<http.Response> snapshot) {
-                                  switch (snapshot.connectionState) {
-                                    case ConnectionState.done:
-                                      if (snapshot.hasError ||
-                                          snapshot.data.body.isEmpty) break;
-                                      final intData =
-                                          int.tryParse(snapshot.data.body);
-                                      if (intData == null) break;
-                                      final wid = [
-                                        AutoSizeText(
-                                          intData == -1
-                                              ? 'Course now opens.'
-                                              : 'Last opened:',
-                                          maxLines: 1,
-                                          style: TextStyle(color: Colors.cyan),
-                                        )
-                                      ];
+      body: Scrollbar(
+          child: Container(
+        padding: EdgeInsets.all(16.0),
+        child: () {
+          if (_children.isEmpty) {
+            return const Text(
+              'No courses added for now...',
+              style: TextStyle(fontSize: 20.0),
+            );
+          }
+          return SingleChildScrollView(
+              padding: EdgeInsets.only(bottom: 60.0),
+              child: Column(
+                  children: _children
+                      .map((s) => Row(
+                            children: [
+                              Expanded(
+                                  flex: 4,
+                                  child: AutoSizeText(s.replaceAll(' ', ''),
+                                      maxLines: 1,
+                                      style: const TextStyle(fontSize: 25.0))),
+                              Expanded(
+                                flex: 3,
+                                child: FutureBuilder<http.Response>(
+                                    future: http.get(
+                                        'https://pennmate.com/last_opened.php?course=' +
+                                            s),
+                                    builder: (BuildContext context,
+                                        AsyncSnapshot<http.Response> snapshot) {
+                                      switch (snapshot.connectionState) {
+                                        case ConnectionState.done:
+                                          if (snapshot.hasError ||
+                                              snapshot.data.body.isEmpty) break;
+                                          final intData =
+                                              int.tryParse(snapshot.data.body);
+                                          if (intData == null) break;
+                                          final wid = [
+                                            AutoSizeText(
+                                              intData == -1
+                                                  ? 'Course available.'
+                                                  : 'Last opened at:',
+                                              maxLines: 1,
+                                              style: TextStyle(
+                                                  color: Colors.blue[600]),
+                                            )
+                                          ];
 
-                                      if (intData != -1) {
-                                        wid.add(AutoSizeText(
-                                          _formatter.format(DateTime
-                                              .fromMillisecondsSinceEpoch(
-                                                  intData * 1000)),
-                                          maxLines: 1,
-                                          style: TextStyle(color: Colors.cyan),
-                                        ));
+                                          if (intData != -1) {
+                                            wid.add(AutoSizeText(
+                                              _formatter.format(DateTime
+                                                  .fromMillisecondsSinceEpoch(
+                                                      intData * 1000)),
+                                              maxLines: 1,
+                                              style: TextStyle(
+                                                  color: Colors.blue[300]),
+                                            ));
+                                          }
+                                          return Column(children: wid);
+                                        default:
                                       }
-                                      return Column(children: wid);
-                                    default:
-                                  }
-                                  return Container();
-                                }),
-                          ),
-                          Expanded(
-                            child: Ink(
-                              width: 40,
-                              height: 40,
-                              decoration: ShapeDecoration(
-                                color: Colors.lightBlue,
-                                shape: CircleBorder(),
+                                      return Container();
+                                    }),
                               ),
-                              child: IconButton(
-                                iconSize: 25,
-                                icon: const Icon(Icons.delete_outline),
-                                onPressed: () => _showDeleteAlert(s),
-                                color: Colors.white,
-                              ),
-                            ),
-                          )
-                        ],
-                      ))
-                  .fold(<Widget>[
+                              Expanded(
+                                child: Ink(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: ShapeDecoration(
+                                    color: Colors.lightBlue,
+                                    shape: CircleBorder(),
+                                  ),
+                                  child: IconButton(
+                                    iconSize: 25,
+                                    icon: const Icon(Icons.delete_outline),
+                                    onPressed: () => _showDeleteAlert(s),
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              )
+                            ],
+                          ))
+                      .fold(<Widget>[
                 const Text('Course List', style: TextStyle(fontSize: 40.0))
               ], (l, row) {
                 return l..add(const Divider())..add(row);
-              });
-            }(),
-          )),
+              })));
+        }(),
+      )),
       floatingActionButton: FloatingActionButton(
         onPressed: _showDialog,
         tooltip: 'Add',
